@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planificateur IPv4 hors ligne</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f6f8;
+      --fg: #1d1f23;
+      --accent: #1565c0;
+      --accent-contrast: #ffffff;
+      --border: #cfd8dc;
+      --card: #ffffff;
+      --muted: #546e7a;
+      --error: #c62828;
+      --success: #2e7d32;
+    }
+
+    [data-theme="dark"] {
+      --bg: #10161d;
+      --fg: #edf2f7;
+      --accent: #64b5f6;
+      --accent-contrast: #0a1929;
+      --border: #334155;
+      --card: #1e293b;
+      --muted: #94a3b8;
+      --error: #ef5350;
+      --success: #81c784;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header, footer {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    main {
+      flex: 1;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      box-shadow: 0 8px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    section h2 {
+      margin-top: 0;
+      font-size: 1.25rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.6rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    button {
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.65rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      background: var(--accent);
+      color: var(--accent-contrast);
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    button[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    button:hover:not([disabled]) {
+      background: color-mix(in srgb, var(--accent) 85%, black 15%);
+    }
+
+    button:active:not([disabled]) {
+      transform: translateY(1px);
+    }
+
+    .secondary-button {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    .secondary-button:hover {
+      background: color-mix(in srgb, var(--accent) 12%, transparent 88%);
+    }
+
+    .network-card {
+      border: 1px dashed var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: color-mix(in srgb, var(--card) 92%, var(--bg) 8%);
+      position: relative;
+    }
+
+    .network-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .network-fields {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .network-fields textarea {
+      grid-column: 1 / -1;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: flex-start;
+    }
+
+    #messages {
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+
+    .message-error {
+      color: var(--error);
+    }
+
+    .message-success {
+      color: var(--success);
+    }
+
+    .summary-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .summary-card {
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      background: color-mix(in srgb, var(--card) 96%, var(--bg) 4%);
+    }
+
+    .summary-card h3 {
+      margin-top: 0;
+    }
+
+    .summary-card dl {
+      margin: 0;
+    }
+
+    .summary-card dt {
+      font-weight: 600;
+    }
+
+    .summary-card dd {
+      margin: 0 0 0.5rem 0;
+    }
+
+    .recap-list {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+
+    #infraText {
+      min-height: 160px;
+    }
+
+    .small {
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition: none !important;
+        animation-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Planificateur IPv4 multi-réseaux</h1>
+    <div>
+      <button type="button" id="themeToggle" aria-label="Basculer le thème">Basculer thème</button>
+    </div>
+  </header>
+  <main>
+    <section aria-labelledby="global-title">
+      <h2 id="global-title">Informations générales</h2>
+      <div class="grid">
+        <div>
+          <label for="platformId">ID plateforme *</label>
+          <input id="platformId" name="platformId" autocomplete="off" required />
+        </div>
+        <div>
+          <label for="project">Projet</label>
+          <input id="project" name="project" autocomplete="off" />
+        </div>
+        <div>
+          <label for="site">Site</label>
+          <input id="site" name="site" autocomplete="off" />
+        </div>
+        <div>
+          <label for="zone">Zone</label>
+          <input id="zone" name="zone" autocomplete="off" />
+        </div>
+        <div>
+          <label for="servers">Nombre de serveurs</label>
+          <input id="servers" name="servers" type="number" min="0" step="1" />
+        </div>
+        <div>
+          <label for="es">ES</label>
+          <input id="es" name="es" autocomplete="off" />
+        </div>
+        <div>
+          <label for="ea">EA</label>
+          <input id="ea" name="ea" autocomplete="off" />
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="networks-title">
+      <h2 id="networks-title">Réseaux (VLAN)</h2>
+      <div id="networkList" aria-live="polite"></div>
+      <button type="button" id="addNetwork" class="secondary-button">+ Ajouter un réseau</button>
+      <p class="small">Saisir soit un CIDR complet, soit une IP + Masque. Les réservées acceptent : suffixe (<code>10</code>), partiel (<code>3.25</code>), complet (<code>192.168.10.5</code>) ou machine (<code>serveur@15</code>).</p>
+    </section>
+
+    <section aria-labelledby="actions-title">
+      <h2 id="actions-title">Actions</h2>
+      <div class="actions">
+        <button type="button" id="validateAll">Valider tous</button>
+        <button type="button" id="generateFods">Générer FODS</button>
+        <button type="button" id="exportJson">Exporter JSON</button>
+        <button type="button" id="importJson">Importer JSON</button>
+        <input type="file" id="importFile" accept="application/json" hidden />
+      </div>
+    </section>
+
+    <section aria-labelledby="results-title">
+      <h2 id="results-title">Récapitulatif</h2>
+      <div id="messages" role="alert" aria-live="assertive"></div>
+      <div id="summary" aria-live="polite"></div>
+    </section>
+
+    <section aria-labelledby="infradep-title">
+      <h2 id="infradep-title">Demande InfraDep</h2>
+      <textarea id="infraText" readonly aria-describedby="infra-helper"></textarea>
+      <p id="infra-helper" class="small">Texte prêt à copier pour la demande InfraDep.</p>
+      <button type="button" id="copyInfra" class="secondary-button">Copier</button>
+      <div id="copyFeedback" role="status" aria-live="polite" class="small"></div>
+    </section>
+  </main>
+  <footer>
+    <p class="small">Application locale hors ligne — aucune donnée transmise.</p>
+  </footer>
+
+  <script>    const IPv4 = (() => {
+      const max32 = 0xffffffff;
+      function ipToInt(ip) {
+        if (typeof ip !== 'string') throw new Error('Adresse IP manquante');
+        const parts = ip.trim().split('.');
+        if (parts.length !== 4) throw new Error('Adresse IP invalide : ' + ip);
+        let result = 0;
+        for (const part of parts) {
+          if (part === '' || isNaN(part)) throw new Error('Octet invalide dans ' + ip);
+          const value = Number(part);
+          if (value < 0 || value > 255) throw new Error('Octet hors plage dans ' + ip);
+          result = (result << 8) + value;
+        }
+        return result >>> 0;
+      }
+      function intToIp(int) {
+        const value = Number(int >>> 0);
+        return [24, 16, 8, 0].map(shift => (value >> shift) & 255).join('.');
+      }
+      function maskToPrefix(mask) {
+        const int = ipToInt(mask);
+        let count = 0;
+        let encounteredZero = false;
+        for (let i = 31; i >= 0; i--) {
+          const bit = (int >> i) & 1;
+          if (bit === 1) {
+            if (encounteredZero) throw new Error('Masque non contigu : ' + mask);
+            count++;
+          } else {
+            encounteredZero = true;
+          }
+        }
+        return count;
+      }
+      function prefixToMaskInt(prefix) {
+        if (prefix < 0 || prefix > 32) throw new Error('Préfixe invalide');
+        if (prefix === 0) return 0;
+        return (max32 << (32 - prefix)) >>> 0;
+      }
+      function maskIntToStr(maskInt) {
+        return intToIp(maskInt);
+      }
+      function alignToNetwork(ipInt, prefix) {
+        const mask = prefixToMaskInt(prefix);
+        return (ipInt & mask) >>> 0;
+      }
+      function parseCIDR(value) {
+        const trimmed = (value || '').trim();
+        const match = trimmed.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){3})\/(\d{1,2})$/);
+        if (!match) throw new Error('CIDR invalide : ' + value);
+        const prefix = Number(match[2]);
+        if (prefix < 0 || prefix > 32) throw new Error('Préfixe invalide : ' + prefix);
+        const baseIp = ipToInt(match[1]);
+        return { ipInt: baseIp, prefix };
+      }
+      function parseIpAndMask(ip, mask) {
+        const ipInt = ipToInt(ip);
+        const prefix = maskToPrefix(mask);
+        return { ipInt, prefix };
+      }
+      function networkBounds(ipInt, prefix) {
+        const network = alignToNetwork(ipInt, prefix);
+        const mask = prefixToMaskInt(prefix);
+        const broadcast = (network | (~mask >>> 0)) >>> 0;
+        return { network, broadcast };
+      }
+      function hostRange(network, broadcast, prefix) {
+        if (prefix === 32) {
+          return { min: network, max: network };
+        }
+        if (prefix === 31) {
+          return { min: network, max: broadcast };
+        }
+        if (broadcast - network <= 1) {
+          return { min: network, max: broadcast };
+        }
+        return { min: network + 1, max: broadcast - 1 };
+      }
+      function usableSize(prefix) {
+        if (prefix === 32) return 1;
+        if (prefix === 31) return 2;
+        const hostBits = 32 - prefix;
+        return Math.max(0, Math.pow(2, hostBits) - 2);
+      }
+      return {
+        ipToInt,
+        intToIp,
+        maskToPrefix,
+        prefixToMaskInt,
+        maskIntToStr,
+        alignToNetwork,
+        parseCIDR,
+        parseIpAndMask,
+        networkBounds,
+        hostRange,
+        usableSize
+      };
+    })();
+
+    const Reserved = (() => {
+      function parseListFlexible(raw, networkInt, prefix) {
+        const baseOctets = IPv4.intToIp(networkInt).split('.').map(Number);
+        const tokens = (raw || '')
+          .split(/[\s,]+/)
+          .map(t => t.trim())
+          .filter(Boolean);
+        const list = [];
+        const errors = [];
+        const seen = new Set();
+        const seenIp = new Set();
+        for (const token of tokens) {
+          let label = null;
+          let value = token;
+          if (token.includes('@')) {
+            const parts = token.split('@');
+            label = parts[0].trim();
+            value = parts.slice(1).join('@').trim();
+            if (!value) {
+              errors.push('Réservation invalide (manque IP) : ' + token);
+              continue;
+            }
+          }
+          try {
+            const ipInt = resolveValue(value, baseOctets);
+            const key = ipInt + '::' + (label || '');
+            if (seen.has(key) || seenIp.has(ipInt)) continue;
+            seen.add(key);
+            seenIp.add(ipInt);
+            list.push({
+              token,
+              label: label || '',
+              value,
+              ipInt,
+              ip: IPv4.intToIp(ipInt),
+              role: label && label.toLowerCase() === 'infradep' ? 'Infradep' : ''
+            });
+          } catch (err) {
+            errors.push(err.message);
+          }
+        }
+        return { list, errors };
+      }
+      function resolveValue(value, baseOctets) {
+        const segments = value.split('.');
+        if (segments.some(seg => seg === '')) {
+          throw new Error('Segment vide dans la réservation : ' + value);
+        }
+        if (segments.length > 4) {
+          throw new Error('Trop d\'octets pour ' + value);
+        }
+        const octets = baseOctets.slice();
+        const offset = 4 - segments.length;
+        for (let i = 0; i < segments.length; i++) {
+          if (isNaN(segments[i])) throw new Error('Valeur non numérique : ' + value);
+          const part = Number(segments[i]);
+          if (part < 0 || part > 255) throw new Error('Octet hors plage : ' + value);
+          octets[offset + i] = part;
+        }
+        return ((octets[0] << 24) >>> 0) + ((octets[1] << 16) >>> 0) + ((octets[2] << 8) >>> 0) + octets[3];
+      }
+      return { parseListFlexible };
+    })();
+
+    const FODS = (() => {
+      const header = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" ' +
+        'xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" ' +
+        'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" ' +
+        'xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" ' +
+        'xmlns:officeooo="http://openoffice.org/2009/office" ' +
+        'office:version="1.2">\n' +
+        '<office:body>\n<office:spreadsheet>\n';
+      const footer = '</office:spreadsheet>\n</office:body>\n</office:document>';
+
+      function escape(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function tableCell(value) {
+        return '<table:table-cell office:value-type="string"><text:p>' + escape(value) + '</text:p></table:table-cell>';
+      }
+
+      function emptyCell() {
+        return '<table:table-cell office:value-type="string"/>';
+      }
+
+      function formatRanges(ranges) {
+        if (!ranges || !ranges.length) return 'Aucune';
+        return ranges
+          .map(range => {
+            if (range.start === range.end) {
+              return IPv4.intToIp(range.start);
+            }
+            return IPv4.intToIp(range.start) + ' - ' + IPv4.intToIp(range.end);
+          })
+          .join(', ');
+      }
+
+      function buildGlobalSheet(meta, networks) {
+        const rows = [];
+        rows.push('<table:table table:name="Vue globale">');
+        rows.push('<table:table-row>' +
+          tableCell('Plateforme : ' + (meta.platformId || '')) +
+          tableCell('Projet : ' + (meta.project || '')) +
+          tableCell('Total réseaux : ' + networks.length) +
+          '</table:table-row>');
+        const headers = ['VLAN', 'ID VLAN', 'CIDR', 'Masque', 'Réseau', 'Passerelle', 'Broadcast', 'Réservées', 'Libres'];
+        rows.push('<table:table-row>' + headers.map(tableCell).join('') + '</table:table-row>');
+        for (const net of networks) {
+          const reservedText = net.reservedList.length
+            ? net.reservedList.map(r => (r.label ? r.label + ' @ ' : '') + r.ip).join(', ')
+            : 'Aucune';
+          const freeText = formatRanges(net.freeRanges);
+          rows.push('<table:table-row>' +
+            tableCell(net.type) +
+            tableCell(net.vlanId) +
+            tableCell(net.cidr) +
+            tableCell(net.mask) +
+            tableCell(net.network) +
+            tableCell(net.gateway || '') +
+            tableCell(net.broadcast) +
+            tableCell(reservedText) +
+            tableCell(freeText) +
+            '</table:table-row>');
+        }
+        rows.push('</table:table>');
+        return rows.join('\n');
+      }
+
+      function buildNetworkSheet(net) {
+        const name = 'IP — VLAN ' + net.type;
+        const title = 'VLAN ' + net.type + ' | ID ' + net.vlanId + ' | ' + net.cidr;
+        const rows = [];
+        rows.push('<table:table table:name="' + escape(name) + '">');
+        rows.push('<table:table-row>' + tableCell(title) + emptyCell() + emptyCell() + emptyCell() + '</table:table-row>');
+        rows.push('<table:table-row>' + ['IP', 'Statut', 'Rôle', 'Serveur'].map(tableCell).join('') + '</table:table-row>');
+        const reservedMap = new Map(net.reservedList.map(r => [r.ipInt, r]));
+        for (let ip = net.hostMin; ip <= net.hostMax; ip++) {
+          const ipStr = IPv4.intToIp(ip);
+          const reserved = reservedMap.get(ip);
+          let statut = 'Libre';
+          let role = '';
+          let serveur = '';
+          if (net.gatewayInt !== null && ip === net.gatewayInt) {
+            statut = 'Affecté';
+            role = 'Passerelle';
+            serveur = 'Passerelle';
+          } else if (reserved) {
+            statut = reserved.label ? 'Affecté' : 'Réservée';
+            role = reserved.role || '';
+            serveur = reserved.label || reserved.token || '';
+          }
+          rows.push('<table:table-row>' +
+            tableCell(ipStr) +
+            tableCell(statut) +
+            tableCell(role) +
+            tableCell(serveur) +
+            '</table:table-row>');
+        }
+        rows.push('</table:table>');
+        return rows.join('\n');
+      }
+
+      function buildInfraSheet(infradep, meta) {
+        const rows = [];
+        rows.push('<table:table table:name="InfraDep">');
+        const fields = [
+          ['Trigramme', infradep ? infradep.trigram : ''],
+          ['ID Plateforme', infradep ? infradep.platformId : (meta.platformId || '')],
+          ['Site', infradep ? infradep.site : (meta.site || '')],
+          ['Zone', infradep ? infradep.zone : (meta.zone || '')],
+          ['Sous-réseau', infradep ? infradep.subnet : ''],
+          ['Plage DHCP', infradep ? infradep.dhcpRange : ''],
+          ['Passerelle', infradep ? infradep.gateway : ''],
+          ['ES', infradep ? infradep.es : (meta.es || '')],
+          ['EA', infradep ? infradep.ea : (meta.ea || '')]
+        ];
+        for (const [key, value] of fields) {
+          rows.push('<table:table-row>' + tableCell(key) + tableCell(value) + '</table:table-row>');
+        }
+        rows.push('</table:table>');
+        return rows.join('\n');
+      }
+
+      function buildDocument(meta, networks, infradep) {
+        const parts = [header];
+        parts.push(buildGlobalSheet(meta, networks));
+        for (const net of networks) {
+          parts.push(buildNetworkSheet(net));
+        }
+        parts.push(buildInfraSheet(infradep, meta));
+        parts.push(footer);
+        return parts.join('\n');
+      }
+
+      function triggerDownload(content, filename) {
+        const blob = new Blob([content], { type: 'application/vnd.oasis.opendocument.spreadsheet' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 0);
+      }
+
+      return { buildDocument, triggerDownload };
+    })();
+
+    const UI = (() => {
+      const vlanOptions = ['Admin', 'Appli', 'Backup', 'NAS', 'Data'];
+      let networkCounter = 0;
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatRanges(ranges) {
+        if (!ranges || !ranges.length) return 'Aucune';
+        return ranges
+          .map(range => {
+            if (range.start === range.end) {
+              return IPv4.intToIp(range.start);
+            }
+            return IPv4.intToIp(range.start) + ' - ' + IPv4.intToIp(range.end);
+          })
+          .join(', ');
+      }
+
+
+      function init() {
+        const addBtn = document.getElementById('addNetwork');
+        addBtn.addEventListener('click', () => addNetworkCard());
+        document.getElementById('validateAll').addEventListener('click', handleValidate);
+        document.getElementById('generateFods').addEventListener('click', handleFods);
+        document.getElementById('exportJson').addEventListener('click', handleExport);
+        document.getElementById('importJson').addEventListener('click', () => document.getElementById('importFile').click());
+        document.getElementById('importFile').addEventListener('change', handleImport);
+        document.getElementById('copyInfra').addEventListener('click', copyInfraText);
+      }
+
+      function addNetworkCard(prefill) {
+        const list = document.getElementById('networkList');
+        const card = document.createElement('div');
+        card.className = 'network-card';
+        const idx = networkCounter++;
+        card.dataset.index = String(idx);
+        card.innerHTML = getCardTemplate(idx);
+        list.appendChild(card);
+        const removeBtn = card.querySelector('.remove-network');
+        removeBtn.addEventListener('click', () => {
+          card.remove();
+        });
+        if (prefill) {
+          card.querySelector('.vlan-type').value = prefill.type || '';
+          card.querySelector('.vlan-id').value = prefill.vlanId || '';
+          card.querySelector('.cidr').value = prefill.cidr || '';
+          card.querySelector('.ip').value = prefill.ip || '';
+          card.querySelector('.mask').value = prefill.mask || '';
+          card.querySelector('.gateway').value = prefill.gateway || '';
+          card.querySelector('.reserved').value = prefill.reserved || '';
+        }
+      }
+
+      function getCardTemplate(index) {
+        return `
+          <div class="network-header">
+            <h3>Réseau ${index + 1}</h3>
+            <button type="button" class="secondary-button remove-network">Supprimer</button>
+          </div>
+          <div class="network-fields">
+            <div>
+              <label for="vlan-type-${index}">VLAN</label>
+              <select id="vlan-type-${index}" class="vlan-type" aria-label="Type de VLAN">
+                <option value="">Choisir...</option>
+                ${vlanOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label for="vlan-id-${index}">ID VLAN *</label>
+              <input id="vlan-id-${index}" class="vlan-id" required />
+            </div>
+            <div>
+              <label for="cidr-${index}">CIDR</label>
+              <input id="cidr-${index}" class="cidr" placeholder="192.168.10.0/24" />
+            </div>
+            <div>
+              <label for="ip-${index}">IP</label>
+              <input id="ip-${index}" class="ip" placeholder="192.168.10.0" />
+            </div>
+            <div>
+              <label for="mask-${index}">Masque</label>
+              <input id="mask-${index}" class="mask" placeholder="255.255.255.0" />
+            </div>
+            <div>
+              <label for="gateway-${index}">Passerelle</label>
+              <input id="gateway-${index}" class="gateway" placeholder="optionnel" />
+            </div>
+            <div>
+              <label for="reserved-${index}">IP réservées</label>
+              <textarea id="reserved-${index}" class="reserved" placeholder="10, 20, serveur@21"></textarea>
+            </div>
+          </div>
+        `;
+      }
+
+      function collectPlan() {
+        const plan = {
+          meta: {
+            platformId: document.getElementById('platformId').value.trim(),
+            project: document.getElementById('project').value.trim(),
+            site: document.getElementById('site').value.trim(),
+            zone: document.getElementById('zone').value.trim(),
+            servers: document.getElementById('servers').value.trim(),
+            es: document.getElementById('es').value.trim(),
+            ea: document.getElementById('ea').value.trim()
+          },
+          networks: []
+        };
+        const list = document.querySelectorAll('#networkList .network-card');
+        list.forEach(card => {
+          plan.networks.push({
+            type: card.querySelector('.vlan-type').value,
+            vlanId: card.querySelector('.vlan-id').value,
+            cidr: card.querySelector('.cidr').value,
+            ip: card.querySelector('.ip').value,
+            mask: card.querySelector('.mask').value,
+            gateway: card.querySelector('.gateway').value,
+            reserved: card.querySelector('.reserved').value
+          });
+        });
+        return plan;
+      }
+
+      function handleValidate() {
+        const plan = collectPlan();
+        const result = App.computePlan(plan);
+        if (!result.success) {
+          showErrors(result.errors);
+          return;
+        }
+        App.setComputed(result);
+        showSuccess('Calcul réalisé avec succès.');
+        renderSummary(result);
+      }
+
+      function handleFods() {
+        const plan = collectPlan();
+        const result = App.computePlan(plan);
+        if (!result.success) {
+          showErrors(result.errors);
+          return;
+        }
+        App.setComputed(result);
+        renderSummary(result);
+        const filename = (plan.meta.platformId || 'plan-ipv4') + '.fods';
+        const content = FODS.buildDocument(result.meta, result.networks, result.infradep);
+        FODS.triggerDownload(content, filename);
+        showSuccess('Fichier FODS généré.');
+      }
+
+      function handleExport() {
+        const plan = collectPlan();
+        const data = {
+          version: '1.0',
+          meta: plan.meta,
+          networks: plan.networks
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = (plan.meta.platformId || 'plan-ipv4') + '.json';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }, 0);
+        showSuccess('Export JSON réalisé.');
+      }
+
+      function handleImport(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            const data = JSON.parse(e.target.result);
+            if (!data || data.version !== '1.0') {
+              throw new Error('Version JSON non supportée.');
+            }
+            loadPlan(data);
+            showSuccess('Import JSON effectué.');
+          } catch (err) {
+            showErrors(['Import JSON impossible : ' + err.message]);
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+      }
+
+      function loadPlan(data) {
+        document.getElementById('platformId').value = data.meta.platformId || '';
+        document.getElementById('project').value = data.meta.project || '';
+        document.getElementById('site').value = data.meta.site || '';
+        document.getElementById('zone').value = data.meta.zone || '';
+        document.getElementById('servers').value = data.meta.servers || '';
+        document.getElementById('es').value = data.meta.es || '';
+        document.getElementById('ea').value = data.meta.ea || '';
+        const list = document.getElementById('networkList');
+        list.innerHTML = '';
+        networkCounter = 0;
+        (data.networks || []).forEach(entry => addNetworkCard(entry));
+      }
+
+      function showErrors(errors) {
+        const messages = document.getElementById('messages');
+        messages.innerHTML = errors.map(err => '<div class="message-error">' + escapeHtml(err) + '</div>').join('');
+        document.getElementById('summary').innerHTML = '';
+        document.getElementById('infraText').value = '';
+      }
+
+      function showSuccess(text) {
+        const messages = document.getElementById('messages');
+        messages.innerHTML = '<div class="message-success">' + escapeHtml(text) + '</div>';
+      }
+
+      function renderSummary(result) {
+        const container = document.getElementById('summary');
+        const cards = result.networks.map(net => {
+          const vlanName = escapeHtml(net.type);
+          const vlanId = escapeHtml(net.vlanId);
+          const cidr = escapeHtml(net.cidr);
+          const mask = escapeHtml(net.mask);
+          const network = escapeHtml(net.network);
+          const gateway = net.gateway ? escapeHtml(net.gateway) : '—';
+          const broadcast = escapeHtml(net.broadcast);
+          const freeText = escapeHtml(formatRanges(net.freeRanges));
+          const reservedText = net.reservedList.length
+            ? '<ul class="recap-list">' + net.reservedList.map(item => {
+                const label = item.label ? ' — ' + escapeHtml(item.label) : '';
+                const role = item.role ? ' (' + escapeHtml(item.role) + ')' : '';
+                return `<li>${escapeHtml(item.ip)}${label}${role}</li>`;
+              }).join('') + '</ul>'
+            : '<p>Aucune adresse réservée.</p>';
+          return `
+            <div class="summary-card">
+              <h3>VLAN ${vlanName} (ID ${vlanId})</h3>
+              <dl>
+                <dt>CIDR</dt><dd>${cidr}</dd>
+                <dt>Masque</dt><dd>${mask}</dd>
+                <dt>Réseau</dt><dd>${network}</dd>
+                <dt>Passerelle</dt><dd>${gateway}</dd>
+                <dt>Broadcast</dt><dd>${broadcast}</dd>
+                <dt>Adresses libres</dt><dd>${freeText}</dd>
+              </dl>
+              <h4>Réservées</h4>
+              ${reservedText}
+            </div>
+          `;
+        });
+        container.innerHTML = '<div class="summary-grid">' + cards.join('') + '</div>';
+        if (result.infradep) {
+          document.getElementById('infraText').value = result.infradep.text;
+        } else {
+          document.getElementById('infraText').value = '';
+        }
+      }
+
+      function copyInfraText() {
+        const textarea = document.getElementById('infraText');
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        try {
+          const ok = document.execCommand('copy');
+          const feedback = document.getElementById('copyFeedback');
+          feedback.textContent = ok ? 'Texte copié.' : 'Copie impossible.';
+          setTimeout(() => (feedback.textContent = ''), 2500);
+        } catch (err) {
+          const feedback = document.getElementById('copyFeedback');
+          feedback.textContent = 'Copie non supportée.';
+          setTimeout(() => (feedback.textContent = ''), 2500);
+        }
+      }
+
+      return { init, addNetworkCard, loadPlan };
+    })();
+
+
+    const App = (() => {
+      let lastResult = null;
+      const themeKey = 'ipv4-theme-mode';
+
+      function init() {
+        setupTheme();
+        UI.init();
+        preload();
+      }
+
+      function setupTheme() {
+        const button = document.getElementById('themeToggle');
+        const stored = localStorage.getItem(themeKey) || 'auto';
+        applyTheme(stored);
+        if (button) {
+          button.addEventListener('click', () => {
+            const next = cycleTheme();
+            updateThemeButton(button, next);
+          });
+          updateThemeButton(button, stored);
+        }
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        media.addEventListener('change', () => {
+          const mode = localStorage.getItem(themeKey) || 'auto';
+          applyTheme(mode);
+        });
+      }
+
+      function updateThemeButton(button, mode) {
+        button.title = 'Mode actuel : ' + mode + ' (cliquer pour changer)';
+      }
+
+      function cycleTheme() {
+        const current = localStorage.getItem(themeKey) || 'auto';
+        const next = current === 'dark' ? 'light' : current === 'light' ? 'auto' : 'dark';
+        localStorage.setItem(themeKey, next);
+        applyTheme(next);
+        notifyTheme(next);
+        return next;
+      }
+
+      function applyTheme(mode) {
+        const root = document.documentElement;
+        if (mode === 'dark' || (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          root.setAttribute('data-theme', 'dark');
+        } else {
+          root.removeAttribute('data-theme');
+        }
+      }
+
+      function notifyTheme(mode) {
+        const feedback = document.getElementById('copyFeedback');
+        if (!feedback) return;
+        const message = 'Thème réglé sur : ' + mode;
+        feedback.textContent = message;
+        setTimeout(() => {
+          if (feedback.textContent === message) {
+            feedback.textContent = '';
+          }
+        }, 2000);
+      }
+
+      function preload() {
+        if (document.querySelectorAll('#networkList .network-card').length === 0) {
+          UI.addNetworkCard({
+            type: 'Admin',
+            vlanId: '100',
+            cidr: '192.168.10.0/24',
+            gateway: '',
+            reserved: 'serveur1@10, sauvegarde@11'
+          });
+          UI.addNetworkCard({
+            type: 'Appli',
+            vlanId: '110',
+            cidr: '192.168.20.0/24',
+            gateway: '',
+            reserved: ''
+          });
+        }
+      }
+
+      function computePlan(plan) {
+        return computeAll(plan);
+      }
+
+      function computeAll(plan) {
+        const errors = [];
+        const meta = plan.meta || {};
+        if (!meta.platformId || !meta.platformId.trim()) {
+          errors.push('ID plateforme requis.');
+        }
+        const seenVlans = new Set();
+        const computed = [];
+        for (const entry of plan.networks || []) {
+          if (!entry) continue;
+          const type = (entry.type || '').trim();
+          if (type) {
+            if (seenVlans.has(type)) {
+              errors.push('Le VLAN ' + type + ' est défini plusieurs fois.');
+              continue;
+            }
+            seenVlans.add(type);
+          }
+          try {
+            computed.push(computeOne(entry, meta));
+          } catch (err) {
+            errors.push(err.message);
+          }
+        }
+        if (errors.length) {
+          return { success: false, errors };
+        }
+        const enriched = postCompute(meta, computed);
+        return { success: true, errors: [], meta, networks: enriched.networks, infradep: enriched.infradep };
+      }
+
+      function computeOne(entry, meta) {
+        const type = (entry.type || '').trim();
+        const vlanId = (entry.vlanId || '').trim();
+        if (!type) throw new Error('Type de VLAN manquant.');
+        if (!vlanId) throw new Error('ID VLAN requis pour ' + type + '.');
+        let parseResult;
+        if (entry.cidr && entry.cidr.trim()) {
+          parseResult = IPv4.parseCIDR(entry.cidr);
+        } else {
+          if (!entry.ip || !entry.mask) {
+            throw new Error('CIDR ou IP+Masque requis pour ' + type + '.');
+          }
+          parseResult = IPv4.parseIpAndMask(entry.ip, entry.mask);
+        }
+        const { ipInt, prefix } = parseResult;
+        const { network, broadcast } = IPv4.networkBounds(ipInt, prefix);
+        const cidr = IPv4.intToIp(network) + '/' + prefix;
+        const mask = IPv4.maskIntToStr(IPv4.prefixToMaskInt(prefix));
+        const hostRange = IPv4.hostRange(network, broadcast, prefix);
+        const { list: reservedList, errors: reservedErrors } = Reserved.parseListFlexible(entry.reserved || '', network, prefix);
+        if (reservedErrors.length) {
+          throw new Error('Réservées invalides pour ' + type + ' : ' + reservedErrors.join('; '));
+        }
+        const reservedInts = [];
+        const reservedByIp = new Map();
+        for (const r of reservedList) {
+          reservedInts.push(r.ipInt);
+          reservedByIp.set(r.ipInt, r);
+        }
+        const hostMin = hostRange.min;
+        const hostMax = hostRange.max;
+        for (const r of reservedInts) {
+          if (r < hostMin || r > hostMax) {
+            throw new Error('Adresse réservée hors plage pour ' + type + ' : ' + IPv4.intToIp(r));
+          }
+        }
+        let gatewayInt = null;
+        let gateway = '';
+        if (entry.gateway && entry.gateway.trim()) {
+          gatewayInt = IPv4.ipToInt(entry.gateway.trim());
+          if (gatewayInt < hostMin || gatewayInt > hostMax) {
+            throw new Error('Passerelle hors plage pour ' + type + '.');
+          }
+          if (prefix <= 30 && (gatewayInt === network || gatewayInt === broadcast)) {
+            throw new Error('Passerelle ne peut pas être réseau/broadcast pour ' + type + '.');
+          }
+          gateway = IPv4.intToIp(gatewayInt);
+        } else if (type === 'Admin') {
+          gatewayInt = hostMax;
+          gateway = IPv4.intToIp(gatewayInt);
+        }
+        if (gatewayInt !== null && (gatewayInt < hostMin || gatewayInt > hostMax)) {
+          throw new Error('Passerelle hors plage pour ' + type + '.');
+        }
+        if (gatewayInt !== null && reservedByIp.has(gatewayInt)) {
+          reservedByIp.get(gatewayInt).role = 'Passerelle';
+        }
+        const usedSet = new Set(reservedInts);
+        if (gatewayInt !== null) usedSet.add(gatewayInt);
+        const freeRanges = computeFreeRanges(hostMin, hostMax, usedSet);
+        const freeCount = freeRanges.reduce((acc, range) => acc + (range.end - range.start + 1), 0);
+        const reservedDetails = reservedList
+          .slice()
+          .sort((a, b) => a.ipInt - b.ipInt)
+          .map(item => ({
+            ip: item.ip,
+            ipInt: item.ipInt,
+            label: item.label,
+            token: item.token,
+            role: item.role
+          }));
+        return {
+          type,
+          vlanId,
+          cidr,
+          mask,
+          network: IPv4.intToIp(network),
+          networkInt: network,
+          prefix,
+          broadcast: IPv4.intToIp(broadcast),
+          broadcastInt: broadcast,
+          hostMin,
+          hostMax,
+          totalUsable: IPv4.usableSize(prefix),
+          gateway,
+          gatewayInt,
+          reservedList: reservedDetails,
+          reservedInts,
+          reservedCount: reservedDetails.length,
+          freeRanges,
+          freeCount
+        };
+      }
+
+      function computeFreeRanges(hostMin, hostMax, usedSet) {
+        const ranges = [];
+        if (hostMin > hostMax) return ranges;
+        let currentStart = null;
+        for (let ip = hostMin; ip <= hostMax; ip++) {
+          if (usedSet.has(ip)) {
+            if (currentStart !== null) {
+              ranges.push({ start: currentStart, end: ip - 1 });
+              currentStart = null;
+            }
+          } else if (currentStart === null) {
+            currentStart = ip;
+          }
+        }
+        if (currentStart !== null) {
+          ranges.push({ start: currentStart, end: hostMax });
+        }
+        return ranges;
+      }
+
+      function postCompute(meta, networks) {
+        const result = networks.map(n => ({ ...n }));
+        const admin = result.find(n => n.type === 'Admin');
+        let infradep = null;
+        if (admin) {
+          const usedSet = new Set(admin.reservedInts);
+          if (admin.gatewayInt !== null) usedSet.add(admin.gatewayInt);
+          const dhcpRange = computeDhcpRange(admin.hostMin, admin.hostMax, usedSet);
+          if (dhcpRange) {
+            const { start, end } = dhcpRange;
+            const reservedNew = [];
+            for (let ip = start; ip <= end; ip++) {
+              if (!usedSet.has(ip)) {
+                reservedNew.push({
+                  ip: IPv4.intToIp(ip),
+                  ipInt: ip,
+                  label: '',
+                  token: 'infradep',
+                  role: 'Infradep'
+                });
+                usedSet.add(ip);
+              }
+            }
+            admin.reservedList = admin.reservedList.concat(reservedNew).sort((a, b) => a.ipInt - b.ipInt);
+            admin.reservedInts = admin.reservedList.map(r => r.ipInt);
+            admin.reservedCount = admin.reservedList.length;
+            admin.freeRanges = computeFreeRanges(admin.hostMin, admin.hostMax, usedSet);
+            admin.freeCount = admin.freeRanges.reduce((acc, range) => acc + (range.end - range.start + 1), 0);
+            infradep = buildInfraDep(meta, admin, { start, end });
+          } else {
+            infradep = buildInfraDep(meta, admin, null);
+          }
+        }
+        return { networks: result, infradep };
+      }
+
+      function computeDhcpRange(hostMin, hostMax, usedSet) {
+        const freeRanges = computeFreeRanges(hostMin, hostMax, usedSet);
+        for (let i = freeRanges.length - 1; i >= 0; i--) {
+          const range = freeRanges[i];
+          for (let end = range.end; end >= range.start; end--) {
+            const availableLength = end - range.start + 1;
+            const maxLen = Math.min(6, availableLength);
+            for (let len = maxLen; len >= 1; len--) {
+              const start = end - len + 1;
+              if (start < range.start) continue;
+              if ((start & 1) !== 0) continue;
+              return { start, end };
+            }
+          }
+        }
+        return null;
+      }
+
+      function buildInfraDep(meta, admin, dhcpRange) {
+        const trigramSource = (meta.project || meta.platformId || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const trigram = trigramSource.slice(0, 3);
+        let dhcp = '';
+        if (dhcpRange) {
+          dhcp = IPv4.intToIp(dhcpRange.start) + ' - ' + IPv4.intToIp(dhcpRange.end);
+        }
+        const gateway = admin.gateway || (admin.gatewayInt !== null ? IPv4.intToIp(admin.gatewayInt) : '');
+        const lines = [
+          'Trigramme : ' + (trigram || 'N/A'),
+          'ID PF : ' + (meta.platformId || ''),
+          'Site : ' + (meta.site || ''),
+          'Zone : ' + (meta.zone || ''),
+          'Sous-réseau : ' + admin.cidr,
+          'Plage DHCP : ' + (dhcp || 'à définir'),
+          'Passerelle : ' + gateway,
+          'ES : ' + (meta.es || '').toLowerCase(),
+          'EA : ' + (meta.ea || '').toLowerCase()
+        ];
+        return {
+          text: lines.join('
+'),
+          trigram: trigram || '',
+          subnet: admin.cidr,
+          gateway,
+          dhcpRange: dhcp,
+          es: (meta.es || '').toLowerCase(),
+          ea: (meta.ea || '').toLowerCase(),
+          site: meta.site || '',
+          zone: meta.zone || '',
+          platformId: meta.platformId || ''
+        };
+      }
+
+      function setComputed(result) {
+        lastResult = result;
+      }
+
+      return { init, computePlan, setComputed };
+    })();
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+      App.init();
+    });
+  </script>
+</body>
+</html>
